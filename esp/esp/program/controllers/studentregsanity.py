@@ -61,14 +61,15 @@ class StudentRegSanityController(object):
     def sanitize_walkin(self, fake=True, csvwriter=None, csvlog=False, directory=None):
         """Checks for Student Registrations made for walk-in classes. If fake=False, will remove them."""
         closeatend = False
+        csvfile = None
         category_walkin = ClassCategories.objects.get(category="Walk-in Activity")
         if csvlog and not(fake): #If I'm actually doing things, and I want a log....
             import csv
             if csvwriter is None:
                 closeatend = True
                 if directory is None: directory = self.options['directory']
-                filefullname = directory +'/santitize_walkins_log.csv'
-                csvfile = open(filefullname, 'ab+')
+                filefullname = os.path.join(directory, 'sanitize_walkins_log.csv')
+                csvfile = open(filefullname, 'a', newline='', encoding='utf-8')
                 csvwriter = csv.writer(csvfile)
             csvwriter.writerow(['Sanitizing Walkins'])
             csvwriter.writerow(['Class Title', 'Scheduled at:', 'Student', 'Enrollment Type:'])
@@ -78,27 +79,29 @@ class StudentRegSanityController(object):
             for sec in w.get_sections():
                 srs = sec.getRegistrations()
                 report.append((sec, srs.count()))
-
-        for sr in srs:
-            if not fake:
-                if csvlog: csvwriter.writerow([w.title().encode('ascii', 'ignore'), ', '.join(sec.friendly_times()), sr.user.name().encode('ascii', 'ignore'), sr.relationship.__str__().encode('ascii', 'ignore')])
-                sr.expire()
+                for sr in srs:
+                    if not fake:
+                        if csvlog:
+                            csvwriter.writerow([w.title(), ', '.join(sec.friendly_times()), sr.user.name(), str(sr.relationship)])
+                        sr.expire()
         logger.debug(report)
         if closeatend: csvfile.close()
         logger.info("Walkins checked")
-        if not fake: "Please re-run self.initialize() to update."
+        if not fake:
+            logger.info("Please re-run self.initialize() to update.")
         return report
 
     def sanitize_lunch(self, csvlog=False, fake = True, csvwriter=None, directory=None):
         """Checks to see if any students have registrations for lunch. If fake=False, removes them."""
         closeatend = False
+        csvfile = None
         if csvlog and not(fake): #If I'm actually doing things, and I want a log....
             import csv
             if csvwriter is None:
                 closeatend = True
                 if directory is None: directory = self.options['directory']
-                filefullname = directory +'/santitize_lunch_log.csv'
-                csvfile = open(filefullname, 'ab+')
+                filefullname = os.path.join(directory, 'sanitize_lunch_log.csv')
+                csvfile = open(filefullname, 'a', newline='', encoding='utf-8')
                 csvwriter = csv.writer(csvfile)
             csvwriter.writerow(['Sanitizing Lunch Blocks'])
             csvwriter.writerow(['Lunch Block', 'Student', 'Enrollment Type:'])
@@ -111,12 +114,13 @@ class StudentRegSanityController(object):
             report.append((l, srs.count()))
             if not fake:
                 for sr in srs:
-                    if csvlog: csvwriter.writerow([l.title().encode('ascii', 'ignore'), sr.user.name().encode('ascii', 'ignore'), sr.relationship.__str__().encode('ascii', 'ignore')])
+                    if csvlog: csvwriter.writerow([l.title(), sr.user.name(), str(sr.relationship)])
                     sr.expire()
         logger.debug(report)
         if closeatend: csvfile.close()
         logger.info("Lunch checked.")
-        if not fake: "Please re-run self.initialize() to update."
+        if not fake:
+            logger.info("Please re-run self.initialize() to update.")
         return report
 
     def sanitize(self, checks=None, fake=True, csvlog=True, directory=None):
@@ -147,8 +151,8 @@ class StudentRegSanityController(object):
         if csvlog:
             import csv
             if directory is None: directory = self.options['directory']
-            filefullname = directory + '/'+ datetime.now().strftime("%Y-%m-%d_") + 'santitize_log.csv'
-            csvfile = open(filefullname, 'ab+')
+            filefullname = os.path.join(directory, datetime.now().strftime("%Y-%m-%d_") + 'sanitize_log.csv')
+            csvfile = open(filefullname, 'a', newline='', encoding='utf-8')
             csvwriter = csv.writer(csvfile)
         self.reports = {}
         for ck in checks:
